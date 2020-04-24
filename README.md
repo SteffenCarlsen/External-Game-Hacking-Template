@@ -1,6 +1,7 @@
 # External-Game-Hacking-Template
 [![Windows](https://img.shields.io/badge/platform-Windows-0078d7.svg?style=plastic)](https://en.wikipedia.org/wiki/Microsoft_Windows) 
 [![License](https://img.shields.io/github/license/danielkrupinski/Osiris.svg?style=plastic)](LICENSE) 
+
 Free Open-source External-game-hacking template, for making the development of external cheats easier and to have the code-base support you from the start.
 
 ## Features
