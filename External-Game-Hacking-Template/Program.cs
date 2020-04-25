@@ -1,6 +1,9 @@
-﻿using System;
+﻿using External_Game_Hacking_Template.Managers;
+using External_Game_Hacking_Template.Windows.Enums;
+using System;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace External_Game_Hacking_Template
 {
@@ -11,9 +14,28 @@ namespace External_Game_Hacking_Template
 
         static void Main(string[] args)
         {
+            InputManager im = new InputManager();
+            //im.InitKeyboardHook(true);
+            im.InitMouseHook(true);
+            im.MouseMessageEvent += Im_MouseMessageEvent;
+            //im.KeyboardMessageEvent += Im_KeyboardMessageEvent;
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += CurrentDomainOnProcessExit;
+            while (true)
+            {
+                Thread.Sleep(1);
+            }
+        }
+
+        private static void Im_MouseMessageEvent(object sender, Events.MouseMessageEventArgs e)
+        {
+            Console.WriteLine(e.MessageType);
+        }
+
+        private static void Im_KeyboardMessageEvent(object sender, Events.KeyboardMessageEventArgs e)
+        {
+            Console.WriteLine(e.VirtKeyCode);
         }
 
         private static void CurrentDomainOnProcessExit(object sender, EventArgs e)
