@@ -1,4 +1,5 @@
 ﻿using External_Game_Hacking_Template.Events;
+using External_Game_Hacking_Template.Features;
 using External_Game_Hacking_Template.Windows;
 using External_Game_Hacking_Template.Windows.Delegates;
 using External_Game_Hacking_Template.Windows.Enums;
@@ -10,7 +11,7 @@ using System.Windows.Forms;
 
 namespace External_Game_Hacking_Template.Managers
 {
-    internal class InputManager : IDisposable
+    public class InputManager
     {
         /// <summary>
         /// Event to process mouse messages from the hook
@@ -34,12 +35,18 @@ namespace External_Game_Hacking_Template.Managers
         private GlobalHook KeyboardHook = null;
         private GlobalHook MouseHook = null;
 
+        public InputManager()
+        {
+            MessagePump pump = new MessagePump();
+            pump.Start();
+        }
+
         /// <summary>
         /// Initializes a mousehook
         /// Remember to specify an <MouseMessageEvent cref="MouseMessageEvent"/>
         /// </summary>
         /// <param name="stealthyHook"></param>
-        internal void InitMouseHook(bool stealthyHook = false)
+        public void InitMouseHook(bool stealthyHook = false)
         {
             StealthyMouseHook = stealthyHook;
             if (MouseHook != null)
@@ -48,12 +55,10 @@ namespace External_Game_Hacking_Template.Managers
             }
 
             MouseHook = new GlobalHook(HookType.WH_MOUSE_LL, MouseHookCallback);
-            MessageBox.Show("abekat");
         }
 
-        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        public IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            
             if (nCode >= 0)
             {
                 var mouseStructure = Marshal.PtrToStructure<MouseLowLevelHookStruct>(lParam);
@@ -61,7 +66,7 @@ namespace External_Game_Hacking_Template.Managers
             }
             if (!StealthyMouseHook)
             {
-                return User32.CallNextHookEx(MouseHook.HookHandle, nCode, wParam, lParam);
+                return User32.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
             }
 
             return IntPtr.Zero;
@@ -80,12 +85,10 @@ namespace External_Game_Hacking_Template.Managers
                 KeyboardHook.Dispose();
             }
             KeyboardHook = new GlobalHook(HookType.WH_KEYBOARD_LL, KeyboardHookCallback);
-            Console.WriteLine("Hooker");
         }
 
         private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            Console.WriteLine(nCode);
             if (nCode >= 0)
             {
                 var keyboardStructure = Marshal.PtrToStructure<KeyboardLowLevelHookStruct>(lParam);
@@ -106,7 +109,7 @@ namespace External_Game_Hacking_Template.Managers
             MouseHook?.Dispose();
         }
 
-        private sealed class GlobalHook : IDisposable
+        public class GlobalHook : IDisposable
         {
             #region // storage
 
@@ -116,7 +119,7 @@ namespace External_Game_Hacking_Template.Managers
             /// <summary>
             /// Hook callback delegate.
             /// </summary>
-            private HookProc HookProc { get; set; }
+            public HookProc HookProc { get; set; }
 
             /// <summary>
             /// Hook handle.
@@ -172,7 +175,7 @@ namespace External_Game_Hacking_Template.Managers
             /// <summary>
             /// Install an application-defined hook procedure into a hook chain.
             /// </summary>
-            private static IntPtr Hook(HookType hookType, HookProc hookProc)
+            public static IntPtr Hook(HookType hookType, HookProc hookProc)
             {
                 using (var currentProcess = Process.GetCurrentProcess())
                 {
@@ -206,6 +209,24 @@ namespace External_Game_Hacking_Template.Managers
             }
 
             #endregion
+        }
+        public class MessagePump : BaseFeature
+        {
+            public MessagePump()
+            {
+
+            }
+            protected override string ThreadName => nameof(MessagePump);
+            protected override void FrameAction()
+            {
+                Console.WriteLine("i");
+                MSG msg;
+                while (User32.GetMessage(out msg, IntPtr.Zero, 0, 0) != 1)
+                {
+                    User32.TranslateMessage(ref msg);
+                    User32.DispatchMessage(ref msg);
+                }
+            }
         }
     }
 }

@@ -14,18 +14,16 @@ namespace External_Game_Hacking_Template
 
         static void Main(string[] args)
         {
-            InputManager im = new InputManager();
-            //im.InitKeyboardHook(true);
-            im.InitMouseHook(true);
-            im.MouseMessageEvent += Im_MouseMessageEvent;
-            //im.KeyboardMessageEvent += Im_KeyboardMessageEvent;
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += CurrentDomainOnProcessExit;
-            while (true)
-            {
-                Thread.Sleep(1);
-            }
+            InputManager im = new InputManager();
+            im.MouseMessageEvent += Im_MouseMessageEvent;
+            //im.InitKeyboardHook(true);
+            im.InitMouseHook();
+            
+            //im.KeyboardMessageEvent += Im_KeyboardMessageEvent;
+            Console.ReadLine();
         }
 
         private static void Im_MouseMessageEvent(object sender, Events.MouseMessageEventArgs e)

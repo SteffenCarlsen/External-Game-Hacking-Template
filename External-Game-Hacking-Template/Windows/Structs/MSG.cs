@@ -6,13 +6,15 @@ using System.Text;
 namespace External_Game_Hacking_Template.Windows.Structs
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct MouseLowLevelHookStruct
+
+    public struct MSG
     {
-        public Point pt;
-        public int mouseData;
-        public int flags;
-        public int time;
-        public IntPtr dwExtraInfo;
+        IntPtr hwnd;
+        uint message;
+        UIntPtr wParam;
+        IntPtr lParam;
+        int time;
+        Point pt;
     }
 
 }
