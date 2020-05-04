@@ -12,5 +12,10 @@ namespace External_Game_Hacking_Template.Windows.Structs
     public struct Point
     {
         public int X, Y;
+
+        public override string ToString()
+        {
+            return $"{{X = {X},Y = {Y}}}";
+        }
     }
 }

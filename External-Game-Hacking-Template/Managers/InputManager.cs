@@ -1,26 +1,23 @@
-﻿using External_Game_Hacking_Template.Events;
-using External_Game_Hacking_Template.Features;
+﻿using External_Game_Hacking_Template.Features;
 using External_Game_Hacking_Template.Windows;
 using External_Game_Hacking_Template.Windows.Delegates;
 using External_Game_Hacking_Template.Windows.Enums;
 using External_Game_Hacking_Template.Windows.Structs;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace External_Game_Hacking_Template.Managers
 {
-    public class InputManager
+    public sealed class InputManager
     {
-        /// <summary>
-        /// Event to process mouse messages from the hook
-        /// </summary>
-        public event EventHandler<MouseMessageEventArgs> MouseMessageEvent;
-        /// <summary>
-        /// Event to process keyboard messages from the hook
-        /// </summary>
-        public event EventHandler<KeyboardMessageEventArgs> KeyboardMessageEvent;
+        private static readonly object padlock = new object();
+        private static InputManager instance = null;
+        private static ConcurrentDictionary<MouseMessage, Action<Point, MouseMessage>> MouseMessages;
+        private static ConcurrentDictionary<Keys, Action<Keys, KeyboardMessage>> KeyboardMessages;
+        public GlobalHook MouseHook { get; private set; }
 
         /// <summary>
         /// If specified to true, will not call CallNextHookEx
@@ -32,13 +29,53 @@ namespace External_Game_Hacking_Template.Managers
         /// </summary>
         public bool StealthyKeyboardHook { get; private set; } = false;
 
-        private GlobalHook KeyboardHook = null;
-        private GlobalHook MouseHook = null;
+        public GlobalHook KeyboardHook { get; private set; }
 
-        public InputManager()
+        /// <summary>
+        /// Singleton
+        /// </summary>
+        private InputManager()
         {
-            MessagePump pump = new MessagePump();
-            pump.Start();
+            MouseMessages = new ConcurrentDictionary<MouseMessage, Action<Point, MouseMessage>>(4, 5);
+            KeyboardMessages = new ConcurrentDictionary<Keys, Action<Keys, KeyboardMessage>>(4, 20);
+        }
+
+        public static InputManager Instance
+        {
+            get
+            {
+                lock (padlock)
+                {
+                    if (instance == null)
+                    {
+                        instance = new InputManager();
+                    }
+
+                    return instance;
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Adds a mouse event based on a MouseMessage
+        /// </summary>
+        /// <param name="eventParam"></param>
+        /// <param name="targetEvent"></param>
+        /// <returns>Whether the event could be added</returns>
+        internal bool AddMouseMessage(MouseMessage eventParam, Action<Point, MouseMessage> targetEvent)
+        {
+            return MouseMessages.TryAdd(eventParam, targetEvent);
+        }
+        /// <summary>
+        /// Adds a keyboard event based on a key
+        /// </summary>
+        /// <param name="eventParam"></param>
+        /// <param name="targetEvent"></param>
+        /// <returns>Whether the event could be added</returns>
+        internal bool AddKeyboardMessage(Keys eventParam, Action<Keys, KeyboardMessage> targetEvent)
+        {
+            return KeyboardMessages.TryAdd(eventParam, targetEvent);
         }
 
         /// <summary>
@@ -62,11 +99,16 @@ namespace External_Game_Hacking_Template.Managers
             if (nCode >= 0)
             {
                 var mouseStructure = Marshal.PtrToStructure<MouseLowLevelHookStruct>(lParam);
-                MouseMessageEvent?.Invoke(this, new MouseMessageEventArgs(mouseStructure.pt, (MouseMessage)wParam));
+                var mouseMessage = (MouseMessage)wParam;
+                var exists = MouseMessages.TryGetValue(mouseMessage, out var eventMethod);
+                if (exists)
+                {
+                    eventMethod(mouseStructure.pt, mouseMessage);
+                }
             }
             if (!StealthyMouseHook)
             {
-                return User32.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+                return User32.CallNextHookEx(MouseHook.HookHandle, nCode, wParam, lParam);
             }
 
             return IntPtr.Zero;
@@ -92,7 +134,13 @@ namespace External_Game_Hacking_Template.Managers
             if (nCode >= 0)
             {
                 var keyboardStructure = Marshal.PtrToStructure<KeyboardLowLevelHookStruct>(lParam);
-                KeyboardMessageEvent?.Invoke(this, new KeyboardMessageEventArgs(keyboardStructure.vkCode, (KeyboardMessage)wParam));
+                var keyboardMessage = (KeyboardMessage)wParam;
+                var exists = KeyboardMessages.TryGetValue((Keys)keyboardStructure.vkCode, out var eventMethod);
+                if (exists)
+                {
+                    Console.WriteLine(keyboardStructure.vkCode);
+                    eventMethod((Keys)keyboardStructure.vkCode, keyboardMessage);
+                }
             }
             if (!StealthyKeyboardHook)
             {
@@ -135,6 +183,8 @@ namespace External_Game_Hacking_Template.Managers
             {
                 HookType = hookType;
                 HookProc = hookProc;
+                GC.KeepAlive(HookProc);
+                GC.KeepAlive(HookHandle);
                 HookHandle = Hook(HookType, HookProc);
             }
 
@@ -175,26 +225,24 @@ namespace External_Game_Hacking_Template.Managers
             /// <summary>
             /// Install an application-defined hook procedure into a hook chain.
             /// </summary>
+            /// 
+
             public static IntPtr Hook(HookType hookType, HookProc hookProc)
             {
-                using (var currentProcess = Process.GetCurrentProcess())
+                using var currentProcess = Process.GetCurrentProcess();
+                using var curModule = currentProcess.MainModule;
+                if (curModule is null)
                 {
-                    using (var curModule = currentProcess.MainModule)
-                    {
-                        if (curModule is null)
-                        {
-                            throw new ArgumentNullException(nameof(curModule));
-                        }
-
-                        var hHook = User32.SetWindowsHookEx((int)hookType, hookProc, Kernel32.GetModuleHandle(curModule.ModuleName), 0);
-                        if (hHook == IntPtr.Zero)
-                        {
-                            throw new ArgumentException("Hook failed.");
-                        }
-
-                        return hHook;
-                    }
+                    throw new ArgumentNullException(nameof(curModule));
                 }
+
+                var hHook = User32.SetWindowsHookEx((int)hookType, hookProc, Kernel32.GetModuleHandle(curModule.ModuleName), 0);
+                if (hHook == IntPtr.Zero)
+                {
+                    throw new ArgumentException("Hook failed.");
+                }
+
+                return hHook;
             }
 
             /// <summary>
@@ -209,24 +257,6 @@ namespace External_Game_Hacking_Template.Managers
             }
 
             #endregion
-        }
-        public class MessagePump : BaseFeature
-        {
-            public MessagePump()
-            {
-
-            }
-            protected override string ThreadName => nameof(MessagePump);
-            protected override void FrameAction()
-            {
-                Console.WriteLine("i");
-                MSG msg;
-                while (User32.GetMessage(out msg, IntPtr.Zero, 0, 0) != 1)
-                {
-                    User32.TranslateMessage(ref msg);
-                    User32.DispatchMessage(ref msg);
-                }
-            }
         }
     }
 }
