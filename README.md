@@ -16,6 +16,10 @@ Free Open-source External-game-hacking template, for making the development of e
     * **ProcessExtensions** - General extensions for interacting with the Process Class
     * **SettingsExtensions** - Wrapper around Newtonsoft.Json for easier reading and writing json files
     * **SteamExtensions** - Getting the steam folder location can sometimes be a bitch, this makes it easy using reg-keys
+* **Managers**
+   * **InputManager** - Low level keyboard and mouse hooks with event-styled support
+* **Features**
+   * **BaseFeature** - Abstract generic implementation of a feature
 * **Memory Library**
     * **Read/Write memory** - Generic implementation of Read/Write memory
     * **ReadMatrix & ReadString** - Reading objects unable to be read using the generic implementation
@@ -25,6 +29,11 @@ Free Open-source External-game-hacking template, for making the development of e
     * **User32** - Most of the needed imports from User32.dll, ready to use
     * **Kernel32** - Most of the needed imports from Kernel.dll, ready to use
     
-# TODO:
-* Low-level keyboard and mouse hooks
-* Include Managers/Features and implement KISS example
+## Development flow
+   * **Getting process** - Use the ProcessExtensions to await the required process
+   * **Await required process modules** - Use the ProcessExtensions to await the required process modules
+   * **Extend BaseFeature** - Override the following: 
+   ```
+   ThreadName, ThreadFPS and FrameAction
+   ```
+   The FrameAction defines a singular action repeated by a thread.
