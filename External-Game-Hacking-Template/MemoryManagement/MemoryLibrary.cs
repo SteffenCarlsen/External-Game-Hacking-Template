@@ -45,6 +45,15 @@ namespace External_Game_Hacking_Template.MemoryManagement
             return buffer;
         }
 
+        public static bool ReadMemoryWithSuccess(IntPtr address, int size, out byte[] bytes)
+        {
+            bytes = new byte[size];
+
+            var status = Windows.Kernel32.ReadProcessMemory(_processHandle, address, bytes, size, out var readBytes);
+
+            return status;
+        }
+
         public static float[] ReadMatrix<T>(IntPtr address, int matrixSize) where T : struct
         {
             var ByteSize = Marshal.SizeOf(typeof(T));
